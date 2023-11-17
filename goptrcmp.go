@@ -1,4 +1,4 @@
-package main
+package goptrcmp
 
 import (
 	"bytes"
@@ -9,15 +9,10 @@ import (
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
-	"golang.org/x/tools/go/analysis/singlechecker"
 	"golang.org/x/tools/go/ast/inspector"
 )
 
-func main() {
-	singlechecker.Main(New())
-}
-
-func New() *analysis.Analyzer {
+func Analyzer() *analysis.Analyzer {
 	return &analysis.Analyzer{
 		Name:             "goptrcmp",
 		Doc:              "Reports pointer comparisons",
