@@ -1,12 +1,11 @@
 package main
 
 import (
-	"fmt"
+	"bytes"
 	"go/ast"
+	"go/printer"
 	"go/token"
 	"go/types"
-	"os"
-	"sync"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
@@ -41,76 +40,35 @@ func run(pass *analysis.Pass) (any, error) {
 		(*ast.BinaryExpr)(nil),
 	}
 
-	var runerr error
-
 	inspector.Preorder(filter, func(node ast.Node) {
-		if runerr != nil {
-			return
-		}
-
-		n, ok := node.(*ast.BinaryExpr)
+		expr, ok := node.(*ast.BinaryExpr)
 		if !ok {
 			return
 		}
 
-		if n.Op != token.EQL && n.Op != token.NEQ {
+		if expr.Op != token.EQL && expr.Op != token.NEQ {
 			return
 		}
 
-		if err := analyzeComparison(pass, n); err != nil {
-			runerr = err
-			return
-		}
+		analyzeComparison(pass, expr)
 	})
 
-	return nil, runerr
+	return nil, nil
 }
 
-var (
-	sources   = map[string][]byte{}
-	sourcesMu sync.RWMutex
-)
-
-func analyzeComparison(pass *analysis.Pass, node *ast.BinaryExpr) error {
-	Xtype, ok := pass.TypesInfo.Types[node.X]
-	if !ok {
-		return nil
+func analyzeComparison(pass *analysis.Pass, expr *ast.BinaryExpr) {
+	Xtype := pass.TypesInfo.TypeOf(expr.X)
+	Ytype := pass.TypesInfo.TypeOf(expr.Y)
+	if Xtype == nil || Ytype == nil {
+		return
 	}
 
-	Ytype, ok := pass.TypesInfo.Types[node.Y]
-	if !ok {
-		return nil
-	}
-
-	_, Xpointer := Xtype.Type.(*types.Pointer)
-	_, Ypointer := Ytype.Type.(*types.Pointer)
+	_, Xpointer := Xtype.(*types.Pointer)
+	_, Ypointer := Ytype.(*types.Pointer)
 
 	if Xpointer && Ypointer {
-		pos := pass.Fset.Position(node.Pos())
-		sourcesMu.RLock()
-		src, ok := sources[pos.Filename]
-		sourcesMu.RUnlock()
-		if !ok {
-			var err error
-			src, err = os.ReadFile(pos.Filename)
-			if err != nil {
-				return fmt.Errorf("read source file: %w", err)
-			}
-			sourcesMu.Lock()
-			sources[pos.Filename] = src
-			sourcesMu.Unlock()
-		}
-
-		left := src[pass.Fset.Position(node.X.Pos()).Offset:pass.Fset.Position(node.X.End()).Offset]
-		right := src[pass.Fset.Position(node.Y.Pos()).Offset:pass.Fset.Position(node.Y.End()).Offset]
-
-		op := "=="
-		if node.Op == token.NEQ {
-			op = "!="
-		}
-
-		pass.Reportf(node.Pos(), "pointer comparison: %s %s %s", left, op, right)
+		buf := &bytes.Buffer{}
+		printer.Fprint(buf, pass.Fset, expr)
+		pass.Reportf(expr.Pos(), "pointer comparison: %s", buf.Bytes())
 	}
-
-	return nil
 }
