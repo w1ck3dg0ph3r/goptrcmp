@@ -7,14 +7,14 @@ A golang linter that reports comparison between pointer values.
 ### Standalone
 
 ```sh
-go run github.com/w1ck3dg0ph3r/goptrcmp@latest ./...
+go run github.com/w1ck3dg0ph3r/goptrcmp/cmd/goptrcmp@latest ./...
 ```
 
 ### Using `go vet`
 
 Install the goptrcmp binary:
 ```sh
-go install github.com/w1ck3dg0ph3r/goptrcmp@latest
+go install github.com/w1ck3dg0ph3r/goptrcmp/cmd/goptrcmp@latest
 ```
 
 Run go vet:
