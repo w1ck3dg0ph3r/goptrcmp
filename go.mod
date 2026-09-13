@@ -1,6 +1,6 @@
 module github.com/w1ck3dg0ph3r/goptrcmp
 
-go 1.27
+go 1.26.0
 
 require (
 	github.com/gostaticanalysis/testutil v0.6.1
